@@ -212,7 +212,7 @@ const Invoices = () => {
             {
                 field: 'actions',
                 headerName: '',
-                width: isMobile ? 80 : 160,
+                width: isMobile ? 120 : 160,
                 sortable: false,
                 renderCell: (params) => (
                     <Box sx={{ display: 'flex', gap: 0.5 }}>
@@ -230,7 +230,7 @@ const Invoices = () => {
                         >
                             <Download fontSize="small" />
                         </IconButton>
-                        {!isMobile && !params.row.is_invoiced && (
+                        {!params.row.is_invoiced && (
                             <IconButton
                                 onClick={() => handleMarkAsInvoiced(params.row.id)}
                                 size="small"
@@ -239,15 +239,13 @@ const Invoices = () => {
                                 <Receipt fontSize="small" />
                             </IconButton>
                         )}
-                        {!isMobile && (
-                            <IconButton
-                                onClick={() => handleDelete(params.row.id)}
-                                size="small"
-                                sx={{ color: 'error.main', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' } }}
-                            >
-                                <Delete fontSize="small" />
-                            </IconButton>
-                        )}
+                        <IconButton
+                            onClick={() => handleDelete(params.row.id)}
+                            size="small"
+                            sx={{ color: 'error.main', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' } }}
+                        >
+                            <Delete fontSize="small" />
+                        </IconButton>
                     </Box>
                 ),
             },
