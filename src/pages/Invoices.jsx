@@ -4,7 +4,7 @@ import {
     DialogActions, Autocomplete, IconButton, Grid, Chip, Card, InputAdornment, useMediaQuery, useTheme
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
-import { Delete, Download, Receipt, Edit, Add, Search } from '@mui/icons-material';
+import { Delete, Download, Receipt, Edit, Add, Search, Cancel } from '@mui/icons-material';
 import api from '../services/api';
 import { Formik, Form, Field, FieldArray } from 'formik';
 
@@ -18,6 +18,9 @@ const Invoices = () => {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+    const [cancellingInvoiceId, setCancellingInvoiceId] = useState(null);
+    const [cancellationReason, setCancellationReason] = useState('');
 
     const fetchInvoices = React.useCallback(async () => {
         try {
@@ -106,14 +109,29 @@ const Invoices = () => {
         setEditingInvoice(null);
     };
 
-    const handleDelete = async (id) => {
-        if (window.confirm('Bu siparişi silmek istediğinizden emin misiniz?')) {
-            try {
-                await api.delete(`/invoices/${id}`);
-                fetchInvoices();
-            } catch (error) {
-                console.error('Sipariş silinirken hata:', error);
-            }
+    const handleOpenCancelDialog = (id) => {
+        setCancellingInvoiceId(id);
+        setCancellationReason('');
+        setCancelDialogOpen(true);
+    };
+
+    const handleCloseCancelDialog = () => {
+        setCancelDialogOpen(false);
+        setCancellingInvoiceId(null);
+        setCancellationReason('');
+    };
+
+    const handleCancelInvoice = async () => {
+        if (!cancellingInvoiceId) return;
+        try {
+            await api.put(`/invoices/${cancellingInvoiceId}/cancel`, {
+                cancellation_reason: cancellationReason
+            });
+            fetchInvoices();
+            handleCloseCancelDialog();
+        } catch (error) {
+            console.error('Sipariş iptal edilirken hata:', error);
+            alert(error.response?.data?.message || 'Bir hata oluştu');
         }
     };
 
@@ -199,15 +217,18 @@ const Invoices = () => {
                 ),
             },
             {
-                field: 'is_invoiced',
+                field: 'status',
                 headerName: 'Durum',
                 width: 110,
                 hideOnMobile: true,
-                renderCell: (params) => (
-                    params.row.is_invoiced
+                renderCell: (params) => {
+                    if (params.row.status === 'Cancelled') {
+                        return <Chip label="İptal" size="small" sx={{ bgcolor: 'rgba(239, 68, 68, 0.15)', color: '#dc2626' }} />;
+                    }
+                    return params.row.is_invoiced
                         ? <Chip label="Faturalı" size="small" sx={{ bgcolor: 'rgba(16, 185, 129, 0.15)', color: '#059669' }} />
-                        : <Chip label="Proforma" size="small" sx={{ bgcolor: 'rgba(248, 194, 36, 0.15)', color: '#c9a227' }} />
-                ),
+                        : <Chip label="Proforma" size="small" sx={{ bgcolor: 'rgba(248, 194, 36, 0.15)', color: '#c9a227' }} />;
+                },
             },
             {
                 field: 'actions',
@@ -230,7 +251,7 @@ const Invoices = () => {
                         >
                             <Download fontSize="small" />
                         </IconButton>
-                        {!params.row.is_invoiced && (
+                        {params.row.status !== 'Cancelled' && !params.row.is_invoiced && (
                             <IconButton
                                 onClick={() => handleMarkAsInvoiced(params.row.id)}
                                 size="small"
@@ -239,13 +260,16 @@ const Invoices = () => {
                                 <Receipt fontSize="small" />
                             </IconButton>
                         )}
-                        <IconButton
-                            onClick={() => handleDelete(params.row.id)}
-                            size="small"
-                            sx={{ color: 'error.main', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' } }}
-                        >
-                            <Delete fontSize="small" />
-                        </IconButton>
+                        {params.row.status !== 'Cancelled' && (
+                            <IconButton
+                                onClick={() => handleOpenCancelDialog(params.row.id)}
+                                size="small"
+                                sx={{ color: 'error.main', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' } }}
+                                title="İptal Et"
+                            >
+                                <Cancel fontSize="small" />
+                            </IconButton>
+                        )}
                     </Box>
                 ),
             },
@@ -483,6 +507,68 @@ const Invoices = () => {
                         </Form>
                     )}
                 </Formik>
+            </Dialog>
+
+            {/* Cancel Dialog */}
+            <Dialog
+                open={cancelDialogOpen}
+                onClose={handleCloseCancelDialog}
+                maxWidth="sm"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 3 } }}
+            >
+                <DialogTitle sx={{ pb: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box
+                            sx={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 2,
+                                bgcolor: 'rgba(239, 68, 68, 0.15)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                        >
+                            <Cancel sx={{ color: 'error.main' }} />
+                        </Box>
+                        <Box>
+                            <Typography variant="h6" fontWeight={600}>
+                                Siparişi İptal Et
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                                Bu işlem geri alınamaz
+                            </Typography>
+                        </Box>
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        Siparişi iptal etmek istediğinizden emin misiniz? Lütfen iptal nedenini belirtin.
+                    </Typography>
+                    <TextField
+                        fullWidth
+                        label="İptal Nedeni"
+                        multiline
+                        rows={3}
+                        value={cancellationReason}
+                        onChange={(e) => setCancellationReason(e.target.value)}
+                        placeholder="Örn: Müşteri talebi ile iptal edildi..."
+                    />
+                </DialogContent>
+                <DialogActions sx={{ p: 3, pt: 0 }}>
+                    <Button onClick={handleCloseCancelDialog} variant="outlined" sx={{ borderRadius: 2 }}>
+                        Vazgeç
+                    </Button>
+                    <Button
+                        onClick={handleCancelInvoice}
+                        variant="contained"
+                        color="error"
+                        sx={{ borderRadius: 2, px: 3 }}
+                    >
+                        İptal Et
+                    </Button>
+                </DialogActions>
             </Dialog>
         </Box>
     );
