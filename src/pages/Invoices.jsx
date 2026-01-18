@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Box, Button, Typography, TextField, Dialog, DialogTitle, DialogContent,
-    DialogActions, Autocomplete, IconButton, Grid, Chip, Card, InputAdornment
+    DialogActions, Autocomplete, IconButton, Grid, Chip, Card, InputAdornment, useMediaQuery, useTheme
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { Delete, Download, Receipt, Edit, Add, Search } from '@mui/icons-material';
@@ -9,6 +9,8 @@ import api from '../services/api';
 import { Formik, Form, Field, FieldArray } from 'formik';
 
 const Invoices = () => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [invoices, setInvoices] = useState([]);
     const [open, setOpen] = useState(false);
     const [editingInvoice, setEditingInvoice] = useState(null);
@@ -145,104 +147,116 @@ const Invoices = () => {
         inv.Customer?.name?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const columns = [
-        {
-            field: 'invoice_no',
-            headerName: 'Sipariş No',
-            width: 140,
-            renderCell: (params) => (
-                <Chip
-                    label={params.value}
-                    size="small"
-                    sx={{
-                        bgcolor: 'rgba(79, 129, 189, 0.15)',
-                        color: 'secondary.main',
-                        fontWeight: 600,
-                    }}
-                />
-            ),
-        },
-        {
-            field: 'date',
-            headerName: 'Tarih',
-            width: 110,
-            valueFormatter: (value) => {
-                if (!value) return '';
-                return new Date(value).toLocaleDateString('tr-TR');
+    const columns = useMemo(() => {
+        const allColumns = [
+            {
+                field: 'invoice_no',
+                headerName: 'No',
+                width: isMobile ? 90 : 140,
+                renderCell: (params) => (
+                    <Chip
+                        label={params.value}
+                        size="small"
+                        sx={{
+                            bgcolor: 'rgba(79, 129, 189, 0.15)',
+                            color: 'secondary.main',
+                            fontWeight: 600,
+                            fontSize: isMobile ? '0.7rem' : '0.8rem',
+                        }}
+                    />
+                ),
             },
-        },
-        {
-            field: 'Customer',
-            headerName: 'Müşteri',
-            flex: 1,
-            minWidth: 180,
-            valueGetter: (value, row) => row.Customer?.name
-        },
-        {
-            field: 'total_amount_currency',
-            headerName: 'Toplam',
-            width: 130,
-            renderCell: (params) => (
-                <Typography variant="body2" fontWeight={600} color="primary.dark">
-                    $ {parseFloat(params.value || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                </Typography>
-            ),
-        },
-        {
-            field: 'is_invoiced',
-            headerName: 'Durum',
-            width: 130,
-            renderCell: (params) => (
-                params.row.is_invoiced
-                    ? <Chip label="Faturalaştırıldı" size="small" sx={{ bgcolor: 'rgba(16, 185, 129, 0.15)', color: '#059669' }} />
-                    : <Chip label="Proforma" size="small" sx={{ bgcolor: 'rgba(248, 194, 36, 0.15)', color: '#c9a227' }} />
-            ),
-        },
-        {
-            field: 'actions',
-            headerName: 'İşlemler',
-            width: 160,
-            sortable: false,
-            renderCell: (params) => (
-                <Box sx={{ display: 'flex', gap: 0.5 }}>
-                    <IconButton
-                        onClick={() => handleEdit(params.row.id)}
-                        size="small"
-                        sx={{ color: 'secondary.main', '&:hover': { bgcolor: 'rgba(79, 129, 189, 0.1)' } }}
-                        title="Düzenle"
-                    >
-                        <Edit fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                        onClick={() => handleDownloadPdf(params.row.id, params.row.invoice_no)}
-                        size="small"
-                        sx={{ color: 'success.main', '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.1)' } }}
-                        title="PDF İndir"
-                    >
-                        <Download fontSize="small" />
-                    </IconButton>
-                    {!params.row.is_invoiced && (
+            {
+                field: 'date',
+                headerName: 'Tarih',
+                width: 100,
+                hideOnMobile: true,
+                valueFormatter: (value) => {
+                    if (!value) return '';
+                    return new Date(value).toLocaleDateString('tr-TR');
+                },
+            },
+            {
+                field: 'Customer',
+                headerName: 'Müşteri',
+                flex: 1,
+                minWidth: isMobile ? 100 : 180,
+                valueGetter: (value, row) => row.Customer?.name,
+                renderCell: (params) => (
+                    <Typography variant="body2" fontWeight={500} sx={{ fontSize: isMobile ? '0.8rem' : '0.875rem' }}>
+                        {params.value}
+                    </Typography>
+                ),
+            },
+            {
+                field: 'total_amount_currency',
+                headerName: 'Toplam',
+                width: isMobile ? 80 : 130,
+                renderCell: (params) => (
+                    <Typography variant="body2" fontWeight={600} color="primary.dark" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
+                        ${parseFloat(params.value || 0).toFixed(0)}
+                    </Typography>
+                ),
+            },
+            {
+                field: 'is_invoiced',
+                headerName: 'Durum',
+                width: 110,
+                hideOnMobile: true,
+                renderCell: (params) => (
+                    params.row.is_invoiced
+                        ? <Chip label="Faturalı" size="small" sx={{ bgcolor: 'rgba(16, 185, 129, 0.15)', color: '#059669' }} />
+                        : <Chip label="Proforma" size="small" sx={{ bgcolor: 'rgba(248, 194, 36, 0.15)', color: '#c9a227' }} />
+                ),
+            },
+            {
+                field: 'actions',
+                headerName: '',
+                width: isMobile ? 80 : 160,
+                sortable: false,
+                renderCell: (params) => (
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
                         <IconButton
-                            onClick={() => handleMarkAsInvoiced(params.row.id)}
+                            onClick={() => handleEdit(params.row.id)}
                             size="small"
-                            sx={{ color: 'primary.main', '&:hover': { bgcolor: 'rgba(248, 194, 36, 0.1)' } }}
-                            title="Faturalaştır"
+                            sx={{ color: 'secondary.main', '&:hover': { bgcolor: 'rgba(79, 129, 189, 0.1)' } }}
                         >
-                            <Receipt fontSize="small" />
+                            <Edit fontSize="small" />
                         </IconButton>
-                    )}
-                    <IconButton
-                        onClick={() => handleDelete(params.row.id)}
-                        size="small"
-                        sx={{ color: 'error.main', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' } }}
-                        title="Sil"
-                    >
-                        <Delete fontSize="small" />
-                    </IconButton>
-                </Box>
-            ),
-        },
-    ];
+                        <IconButton
+                            onClick={() => handleDownloadPdf(params.row.id, params.row.invoice_no)}
+                            size="small"
+                            sx={{ color: 'success.main', '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.1)' } }}
+                        >
+                            <Download fontSize="small" />
+                        </IconButton>
+                        {!isMobile && !params.row.is_invoiced && (
+                            <IconButton
+                                onClick={() => handleMarkAsInvoiced(params.row.id)}
+                                size="small"
+                                sx={{ color: 'primary.main', '&:hover': { bgcolor: 'rgba(248, 194, 36, 0.1)' } }}
+                            >
+                                <Receipt fontSize="small" />
+                            </IconButton>
+                        )}
+                        {!isMobile && (
+                            <IconButton
+                                onClick={() => handleDelete(params.row.id)}
+                                size="small"
+                                sx={{ color: 'error.main', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' } }}
+                            >
+                                <Delete fontSize="small" />
+                            </IconButton>
+                        )}
+                    </Box>
+                ),
+            },
+        ];
+
+        return isMobile
+            ? allColumns.filter(col => !col.hideOnMobile)
+            : allColumns;
+    }, [isMobile]);
 
     const getInitialValues = () => {
         if (editingInvoice) {

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Box, Button, Typography, TextField, Dialog, DialogTitle, DialogContent,
-    DialogActions, IconButton, Paper, InputAdornment, Card, Chip
+    DialogActions, IconButton, Paper, InputAdornment, Card, Chip, useMediaQuery, useTheme
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { Edit, Delete, Add, Search, People, Business } from '@mui/icons-material';
@@ -10,6 +10,8 @@ import { Formik, Form, Field } from 'formik';
 import { CustomerSchema } from '../utils/validationSchemas';
 
 const Customers = () => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [customers, setCustomers] = useState([]);
     const [open, setOpen] = useState(false);
     const [editingCustomer, setEditingCustomer] = useState(null);
@@ -74,69 +76,77 @@ const Customers = () => {
         customer.phone?.includes(searchQuery)
     );
 
-    const columns = [
-        {
-            field: 'name',
-            headerName: 'Firma Adı',
-            flex: 1,
-            minWidth: 180,
-            renderCell: (params) => (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Box
-                        sx={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: 1,
-                            bgcolor: 'rgba(79, 129, 189, 0.1)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}
-                    >
-                        <Business fontSize="small" sx={{ color: 'secondary.main' }} />
+    const columns = useMemo(() => {
+        const allColumns = [
+            {
+                field: 'name',
+                headerName: 'Firma Adı',
+                flex: 1,
+                minWidth: isMobile ? 150 : 180,
+                renderCell: (params) => (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {!isMobile && (
+                            <Box
+                                sx={{
+                                    width: 32,
+                                    height: 32,
+                                    borderRadius: 1,
+                                    bgcolor: 'rgba(79, 129, 189, 0.1)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                }}
+                            >
+                                <Business fontSize="small" sx={{ color: 'secondary.main' }} />
+                            </Box>
+                        )}
+                        <Typography variant="body2" fontWeight={500}>
+                            {params.value}
+                        </Typography>
                     </Box>
-                    <Typography variant="body2" fontWeight={500}>
-                        {params.value}
-                    </Typography>
-                </Box>
-            ),
-        },
-        { field: 'company_title', headerName: 'Ünvan', flex: 1, minWidth: 150 },
-        { field: 'city', headerName: 'Şehir', width: 120 },
-        { field: 'tax_office', headerName: 'Vergi Dairesi', width: 130 },
-        { field: 'tax_number', headerName: 'VKN', width: 120 },
-        { field: 'phone', headerName: 'Telefon', width: 140 },
-        {
-            field: 'actions',
-            headerName: 'İşlemler',
-            width: 100,
-            sortable: false,
-            renderCell: (params) => (
-                <Box sx={{ display: 'flex', gap: 0.5 }}>
-                    <IconButton
-                        onClick={() => handleEdit(params.row)}
-                        size="small"
-                        sx={{
-                            color: 'secondary.main',
-                            '&:hover': { bgcolor: 'rgba(79, 129, 189, 0.1)' }
-                        }}
-                    >
-                        <Edit fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                        onClick={() => handleDelete(params.row.id)}
-                        size="small"
-                        sx={{
-                            color: 'error.main',
-                            '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' }
-                        }}
-                    >
-                        <Delete fontSize="small" />
-                    </IconButton>
-                </Box>
-            ),
-        },
-    ];
+                ),
+            },
+            { field: 'city', headerName: 'Şehir', width: 100, hideOnMobile: false },
+            { field: 'company_title', headerName: 'Ünvan', flex: 1, minWidth: 150, hideOnMobile: true },
+            { field: 'tax_office', headerName: 'Vergi Dairesi', width: 130, hideOnMobile: true },
+            { field: 'tax_number', headerName: 'VKN', width: 120, hideOnMobile: true },
+            { field: 'phone', headerName: 'Telefon', width: 140, hideOnMobile: true },
+            {
+                field: 'actions',
+                headerName: '',
+                width: isMobile ? 80 : 100,
+                sortable: false,
+                renderCell: (params) => (
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        <IconButton
+                            onClick={() => handleEdit(params.row)}
+                            size="small"
+                            sx={{
+                                color: 'secondary.main',
+                                '&:hover': { bgcolor: 'rgba(79, 129, 189, 0.1)' }
+                            }}
+                        >
+                            <Edit fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                            onClick={() => handleDelete(params.row.id)}
+                            size="small"
+                            sx={{
+                                color: 'error.main',
+                                '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' }
+                            }}
+                        >
+                            <Delete fontSize="small" />
+                        </IconButton>
+                    </Box>
+                ),
+            },
+        ];
+
+        return isMobile
+            ? allColumns.filter(col => !col.hideOnMobile)
+            : allColumns;
+    }, [isMobile]);
 
     const initialValues = editingCustomer || {
         name: '',

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
     Box, Button, Typography, TextField, Dialog, DialogTitle, DialogContent,
-    DialogActions, MenuItem, IconButton, Card, InputAdornment, Chip
+    DialogActions, MenuItem, IconButton, Card, InputAdornment, Chip, useMediaQuery, useTheme
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { Edit, Delete, Add, Search, Inventory } from '@mui/icons-material';
@@ -10,6 +10,8 @@ import { Formik, Form, Field } from 'formik';
 import { ProductSchema } from '../utils/validationSchemas';
 
 const Products = () => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [products, setProducts] = useState([]);
     const [open, setOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
@@ -74,99 +76,92 @@ const Products = () => {
         product.raw_material_type?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const columns = [
-        {
-            field: 'product_code',
-            headerName: 'Ürün Kodu',
-            width: 120,
-            renderCell: (params) => (
-                <Chip
-                    label={params.value}
-                    size="small"
-                    sx={{
-                        bgcolor: 'rgba(248, 194, 36, 0.15)',
-                        color: '#c9a227',
-                        fontWeight: 600,
-                    }}
-                />
-            ),
-        },
-        {
-            field: 'product_name',
-            headerName: 'Ürün Adı',
-            flex: 1,
-            minWidth: 180,
-            renderCell: (params) => (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Box
+    const columns = useMemo(() => {
+        const allColumns = [
+            {
+                field: 'product_code',
+                headerName: 'Kod',
+                width: isMobile ? 80 : 120,
+                renderCell: (params) => (
+                    <Chip
+                        label={params.value}
+                        size="small"
                         sx={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: 1,
-                            bgcolor: 'rgba(79, 129, 189, 0.1)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
+                            bgcolor: 'rgba(248, 194, 36, 0.15)',
+                            color: '#c9a227',
+                            fontWeight: 600,
+                            fontSize: isMobile ? '0.7rem' : '0.8rem',
                         }}
-                    >
-                        <Inventory fontSize="small" sx={{ color: 'secondary.main' }} />
-                    </Box>
-                    <Typography variant="body2" fontWeight={500}>
+                    />
+                ),
+            },
+            {
+                field: 'product_name',
+                headerName: 'Ürün Adı',
+                flex: 1,
+                minWidth: isMobile ? 120 : 180,
+                renderCell: (params) => (
+                    <Typography variant="body2" fontWeight={500} sx={{ fontSize: isMobile ? '0.8rem' : '0.875rem' }}>
                         {params.value}
                     </Typography>
-                </Box>
-            ),
-        },
-        {
-            field: 'raw_material_type',
-            headerName: 'Hammadde',
-            width: 100,
-            renderCell: (params) => (
-                <Chip
-                    label={params.value}
-                    size="small"
-                    variant="outlined"
-                    sx={{ borderColor: 'secondary.main', color: 'secondary.main' }}
-                />
-            ),
-        },
-        { field: 'description', headerName: 'Açıklama', flex: 1, minWidth: 150 },
-        { field: 'origin', headerName: 'Menşei', width: 100 },
-        {
-            field: 'unit_price',
-            headerName: 'Fiyat',
-            width: 120,
-            renderCell: (params) => (
-                <Typography variant="body2" fontWeight={600} color="primary.dark">
-                    {params.row.currency} {parseFloat(params.value || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                </Typography>
-            ),
-        },
-        {
-            field: 'actions',
-            headerName: 'İşlemler',
-            width: 100,
-            sortable: false,
-            renderCell: (params) => (
-                <Box sx={{ display: 'flex', gap: 0.5 }}>
-                    <IconButton
-                        onClick={() => handleEdit(params.row)}
+                ),
+            },
+            {
+                field: 'raw_material_type',
+                headerName: 'Tip',
+                width: 80,
+                hideOnMobile: true,
+                renderCell: (params) => (
+                    <Chip
+                        label={params.value}
                         size="small"
-                        sx={{ color: 'secondary.main', '&:hover': { bgcolor: 'rgba(79, 129, 189, 0.1)' } }}
-                    >
-                        <Edit fontSize="small" />
-                    </IconButton>
-                    <IconButton
-                        onClick={() => handleDelete(params.row.id)}
-                        size="small"
-                        sx={{ color: 'error.main', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' } }}
-                    >
-                        <Delete fontSize="small" />
-                    </IconButton>
-                </Box>
-            ),
-        },
-    ];
+                        variant="outlined"
+                        sx={{ borderColor: 'secondary.main', color: 'secondary.main' }}
+                    />
+                ),
+            },
+            { field: 'description', headerName: 'Açıklama', flex: 1, minWidth: 150, hideOnMobile: true },
+            { field: 'origin', headerName: 'Menşei', width: 100, hideOnMobile: true },
+            {
+                field: 'unit_price',
+                headerName: 'Fiyat',
+                width: isMobile ? 90 : 120,
+                renderCell: (params) => (
+                    <Typography variant="body2" fontWeight={600} color="primary.dark" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
+                        {params.row.currency} {parseFloat(params.value || 0).toFixed(2)}
+                    </Typography>
+                ),
+            },
+            {
+                field: 'actions',
+                headerName: '',
+                width: isMobile ? 70 : 100,
+                sortable: false,
+                renderCell: (params) => (
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                        <IconButton
+                            onClick={() => handleEdit(params.row)}
+                            size="small"
+                            sx={{ color: 'secondary.main', '&:hover': { bgcolor: 'rgba(79, 129, 189, 0.1)' } }}
+                        >
+                            <Edit fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                            onClick={() => handleDelete(params.row.id)}
+                            size="small"
+                            sx={{ color: 'error.main', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' } }}
+                        >
+                            <Delete fontSize="small" />
+                        </IconButton>
+                    </Box>
+                ),
+            },
+        ];
+
+        return isMobile
+            ? allColumns.filter(col => !col.hideOnMobile)
+            : allColumns;
+    }, [isMobile]);
 
     const initialValues = editingProduct || {
         product_code: '',
