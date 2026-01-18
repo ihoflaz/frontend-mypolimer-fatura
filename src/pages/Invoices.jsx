@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Button, Typography, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Autocomplete, IconButton, Grid, Chip } from '@mui/material';
+import {
+    Box, Button, Typography, TextField, Dialog, DialogTitle, DialogContent,
+    DialogActions, Autocomplete, IconButton, Grid, Chip, Card, InputAdornment
+} from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
-import { Delete, Download, Receipt, Edit } from '@mui/icons-material';
+import { Delete, Download, Receipt, Edit, Add, Search } from '@mui/icons-material';
 import api from '../services/api';
 import { Formik, Form, Field, FieldArray } from 'formik';
 
@@ -12,6 +15,7 @@ const Invoices = () => {
     const [customers, setCustomers] = useState([]);
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
 
     const fetchInvoices = React.useCallback(async () => {
         try {
@@ -77,7 +81,6 @@ const Invoices = () => {
             const response = await api.get(`/invoices/${id}`);
             const invoice = response.data;
 
-            // Transform items for the form
             const transformedInvoice = {
                 ...invoice,
                 items: invoice.InvoiceItems?.map(item => ({
@@ -136,40 +139,105 @@ const Invoices = () => {
         }
     };
 
+    // Filter invoices
+    const filteredInvoices = invoices.filter(inv =>
+        inv.invoice_no?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        inv.Customer?.name?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
     const columns = [
-        { field: 'invoice_no', headerName: 'Sipariş No', width: 150 },
-        { field: 'date', headerName: 'Tarih', width: 120 },
-        { field: 'Customer', headerName: 'Müşteri', width: 200, valueGetter: (value, row) => row.Customer?.name },
-        { field: 'total_amount_currency', headerName: 'Toplam', width: 120 },
+        {
+            field: 'invoice_no',
+            headerName: 'Sipariş No',
+            width: 140,
+            renderCell: (params) => (
+                <Chip
+                    label={params.value}
+                    size="small"
+                    sx={{
+                        bgcolor: 'rgba(79, 129, 189, 0.15)',
+                        color: 'secondary.main',
+                        fontWeight: 600,
+                    }}
+                />
+            ),
+        },
+        {
+            field: 'date',
+            headerName: 'Tarih',
+            width: 110,
+            valueFormatter: (value) => {
+                if (!value) return '';
+                return new Date(value).toLocaleDateString('tr-TR');
+            },
+        },
+        {
+            field: 'Customer',
+            headerName: 'Müşteri',
+            flex: 1,
+            minWidth: 180,
+            valueGetter: (value, row) => row.Customer?.name
+        },
+        {
+            field: 'total_amount_currency',
+            headerName: 'Toplam',
+            width: 130,
+            renderCell: (params) => (
+                <Typography variant="body2" fontWeight={600} color="primary.dark">
+                    $ {parseFloat(params.value || 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                </Typography>
+            ),
+        },
         {
             field: 'is_invoiced',
             headerName: 'Durum',
             width: 130,
             renderCell: (params) => (
                 params.row.is_invoiced
-                    ? <Chip label="Faturalaştırıldı" color="success" size="small" />
-                    : <Chip label="Proforma" color="warning" size="small" />
+                    ? <Chip label="Faturalaştırıldı" size="small" sx={{ bgcolor: 'rgba(16, 185, 129, 0.15)', color: '#059669' }} />
+                    : <Chip label="Proforma" size="small" sx={{ bgcolor: 'rgba(248, 194, 36, 0.15)', color: '#c9a227' }} />
             ),
         },
         {
             field: 'actions',
             headerName: 'İşlemler',
-            width: 200,
+            width: 160,
+            sortable: false,
             renderCell: (params) => (
-                <Box>
-                    <IconButton onClick={() => handleEdit(params.row.id)} title="Düzenle" color="primary" size="small">
-                        <Edit />
+                <Box sx={{ display: 'flex', gap: 0.5 }}>
+                    <IconButton
+                        onClick={() => handleEdit(params.row.id)}
+                        size="small"
+                        sx={{ color: 'secondary.main', '&:hover': { bgcolor: 'rgba(79, 129, 189, 0.1)' } }}
+                        title="Düzenle"
+                    >
+                        <Edit fontSize="small" />
                     </IconButton>
-                    <IconButton onClick={() => handleDownloadPdf(params.row.id, params.row.invoice_no)} title="PDF İndir" size="small">
-                        <Download />
+                    <IconButton
+                        onClick={() => handleDownloadPdf(params.row.id, params.row.invoice_no)}
+                        size="small"
+                        sx={{ color: 'success.main', '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.1)' } }}
+                        title="PDF İndir"
+                    >
+                        <Download fontSize="small" />
                     </IconButton>
                     {!params.row.is_invoiced && (
-                        <IconButton onClick={() => handleMarkAsInvoiced(params.row.id)} title="Faturalaştır" color="success" size="small">
-                            <Receipt />
+                        <IconButton
+                            onClick={() => handleMarkAsInvoiced(params.row.id)}
+                            size="small"
+                            sx={{ color: 'primary.main', '&:hover': { bgcolor: 'rgba(248, 194, 36, 0.1)' } }}
+                            title="Faturalaştır"
+                        >
+                            <Receipt fontSize="small" />
                         </IconButton>
                     )}
-                    <IconButton onClick={() => handleDelete(params.row.id)} title="Sil" color="error" size="small">
-                        <Delete />
+                    <IconButton
+                        onClick={() => handleDelete(params.row.id)}
+                        size="small"
+                        sx={{ color: 'error.main', '&:hover': { bgcolor: 'rgba(239, 68, 68, 0.1)' } }}
+                        title="Sil"
+                    >
+                        <Delete fontSize="small" />
                     </IconButton>
                 </Box>
             ),
@@ -195,30 +263,112 @@ const Invoices = () => {
         };
     };
 
-    const getSelectedCustomer = (customerId) => {
-        return customers.find(c => c.id === customerId) || null;
-    };
-
-    const getSelectedProduct = (productId) => {
-        return products.find(p => p.id === productId) || null;
-    };
+    const getSelectedCustomer = (customerId) => customers.find(c => c.id === customerId) || null;
+    const getSelectedProduct = (productId) => products.find(p => p.id === productId) || null;
 
     return (
-        <Box sx={{ height: 500, width: '100%' }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                <Typography variant="h4">Siparişler / Faturalar</Typography>
-                <Button variant="contained" onClick={() => setOpen(true)}>Yeni Sipariş</Button>
+        <Box>
+            {/* Header */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, flexWrap: 'wrap', gap: 2 }}>
+                <Box>
+                    <Typography variant="h5" fontWeight={600} gutterBottom>
+                        Siparişler
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                        Toplam {invoices.length} sipariş
+                    </Typography>
+                </Box>
+                <Button
+                    variant="contained"
+                    startIcon={<Add />}
+                    onClick={() => setOpen(true)}
+                    sx={{
+                        px: 3,
+                        py: 1,
+                        background: 'linear-gradient(135deg, rgb(248, 194, 36) 0%, #ffd54f 100%)',
+                        color: '#1a1a2e',
+                        '&:hover': {
+                            background: 'linear-gradient(135deg, #e6b320 0%, #f0c740 100%)',
+                        },
+                    }}
+                >
+                    Yeni Sipariş
+                </Button>
             </Box>
-            <DataGrid
-                rows={invoices}
-                columns={columns}
-                pageSize={10}
-                rowsPerPageOptions={[5, 10, 20]}
-                loading={loading}
-            />
 
-            <Dialog open={open} onClose={handleClose} maxWidth="lg" fullWidth>
-                <DialogTitle>{editingInvoice ? 'Sipariş Düzenle' : 'Yeni Sipariş Formu'}</DialogTitle>
+            {/* Search & Table Card */}
+            <Card sx={{ overflow: 'hidden' }}>
+                <Box sx={{ p: 2, borderBottom: '1px solid', borderColor: 'divider' }}>
+                    <TextField
+                        placeholder="Sipariş ara..."
+                        size="small"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    <Search sx={{ color: 'text.secondary' }} />
+                                </InputAdornment>
+                            ),
+                        }}
+                        sx={{ width: { xs: '100%', sm: 300 } }}
+                    />
+                </Box>
+
+                <Box sx={{ height: 500 }}>
+                    <DataGrid
+                        rows={filteredInvoices}
+                        columns={columns}
+                        pageSize={10}
+                        rowsPerPageOptions={[5, 10, 20]}
+                        loading={loading}
+                        disableSelectionOnClick
+                        sx={{
+                            border: 'none',
+                            '& .MuiDataGrid-columnHeaders': {
+                                bgcolor: 'rgba(79, 129, 189, 0.08)',
+                            },
+                            '& .MuiDataGrid-row:hover': {
+                                bgcolor: 'rgba(79, 129, 189, 0.04)',
+                            },
+                        }}
+                    />
+                </Box>
+            </Card>
+
+            {/* Dialog */}
+            <Dialog
+                open={open}
+                onClose={handleClose}
+                maxWidth="lg"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 3 } }}
+            >
+                <DialogTitle sx={{ pb: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box
+                            sx={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 2,
+                                bgcolor: 'rgba(248, 194, 36, 0.15)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                        >
+                            <Receipt sx={{ color: 'primary.main' }} />
+                        </Box>
+                        <Box>
+                            <Typography variant="h6" fontWeight={600}>
+                                {editingInvoice ? 'Sipariş Düzenle' : 'Yeni Sipariş'}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                                Sipariş bilgilerini girin
+                            </Typography>
+                        </Box>
+                    </Box>
+                </DialogTitle>
                 <Formik
                     initialValues={getInitialValues()}
                     onSubmit={handleCreate}
@@ -228,7 +378,7 @@ const Invoices = () => {
                         <Form>
                             <DialogContent>
                                 <Grid container spacing={2}>
-                                    <Grid item xs={6}>
+                                    <Grid item xs={12} sm={6}>
                                         <Autocomplete
                                             options={customers}
                                             getOptionLabel={(option) => option.name || ''}
@@ -237,20 +387,34 @@ const Invoices = () => {
                                             renderInput={(params) => <TextField {...params} label="Müşteri" required />}
                                         />
                                     </Grid>
-                                    <Grid item xs={3}>
+                                    <Grid item xs={6} sm={3}>
                                         <Field as={TextField} name="date" label="Tarih" type="date" fullWidth InputLabelProps={{ shrink: true }} />
                                     </Grid>
-                                    <Grid item xs={3}>
+                                    <Grid item xs={6} sm={3}>
                                         <Field as={TextField} name="exchange_rate_usd" label="USD Kuru" type="number" fullWidth />
                                     </Grid>
                                 </Grid>
 
-                                <Typography variant="h6" sx={{ mt: 3, mb: 2 }}>Sipariş Kalemleri</Typography>
+                                <Typography variant="subtitle1" fontWeight={600} sx={{ mt: 3, mb: 2 }}>
+                                    Sipariş Kalemleri
+                                </Typography>
                                 <FieldArray name="items">
                                     {({ push, remove }) => (
                                         <Box>
                                             {values.items.map((item, index) => (
-                                                <Box key={index} sx={{ display: 'flex', gap: 1, mb: 1, alignItems: 'center', flexWrap: 'wrap' }}>
+                                                <Box
+                                                    key={index}
+                                                    sx={{
+                                                        display: 'flex',
+                                                        gap: 1,
+                                                        mb: 1.5,
+                                                        alignItems: 'center',
+                                                        flexWrap: 'wrap',
+                                                        p: 1.5,
+                                                        bgcolor: 'rgba(79, 129, 189, 0.04)',
+                                                        borderRadius: 2,
+                                                    }}
+                                                >
                                                     <Autocomplete
                                                         options={products}
                                                         getOptionLabel={(option) => `${option.product_code} - ${option.product_name}` || ''}
@@ -259,20 +423,23 @@ const Invoices = () => {
                                                             setFieldValue(`items.${index}.product_id`, value?.id || '');
                                                             setFieldValue(`items.${index}.unit_price`, value?.unit_price || 0);
                                                         }}
-                                                        renderInput={(params) => <TextField {...params} label="Ürün" sx={{ width: 250 }} size="small" />}
-                                                        sx={{ width: 250 }}
+                                                        renderInput={(params) => <TextField {...params} label="Ürün" size="small" />}
+                                                        sx={{ width: { xs: '100%', sm: 220 } }}
                                                     />
-                                                    <Field as={TextField} name={`items.${index}.quantity`} label="Miktar" type="number" sx={{ width: 100 }} size="small" />
-                                                    <Field as={TextField} name={`items.${index}.unit`} label="Birim" sx={{ width: 80 }} size="small" />
+                                                    <Field as={TextField} name={`items.${index}.quantity`} label="Miktar" type="number" sx={{ width: 90 }} size="small" />
+                                                    <Field as={TextField} name={`items.${index}.unit`} label="Birim" sx={{ width: 70 }} size="small" />
                                                     <Field as={TextField} name={`items.${index}.unit_price`} label="Fiyat ($)" type="number" sx={{ width: 100 }} size="small" />
-                                                    <Field as={TextField} name={`items.${index}.delivery_location`} label="Teslim Yeri" sx={{ width: 150 }} size="small" />
-                                                    <IconButton onClick={() => remove(index)} color="error"><Delete /></IconButton>
+                                                    <Field as={TextField} name={`items.${index}.delivery_location`} label="Teslim Yeri" sx={{ width: { xs: '100%', sm: 130 } }} size="small" />
+                                                    <IconButton onClick={() => remove(index)} color="error" size="small">
+                                                        <Delete />
+                                                    </IconButton>
                                                 </Box>
                                             ))}
                                             <Button
                                                 onClick={() => push({ product_id: '', quantity: 1, unit: 'KG', unit_price: 0, delivery_location: '' })}
                                                 variant="outlined"
-                                                sx={{ mt: 1 }}
+                                                startIcon={<Add />}
+                                                sx={{ mt: 1, borderRadius: 2 }}
                                             >
                                                 Kalem Ekle
                                             </Button>
@@ -280,7 +447,9 @@ const Invoices = () => {
                                     )}
                                 </FieldArray>
 
-                                <Typography variant="h6" sx={{ mt: 3, mb: 1 }}>Sipariş Notu</Typography>
+                                <Typography variant="subtitle1" fontWeight={600} sx={{ mt: 3, mb: 1 }}>
+                                    Sipariş Notu
+                                </Typography>
                                 <Field
                                     as={TextField}
                                     name="notes"
@@ -291,9 +460,13 @@ const Invoices = () => {
                                     placeholder="Siparişe eklemek istediğiniz notları buraya yazabilirsiniz..."
                                 />
                             </DialogContent>
-                            <DialogActions>
-                                <Button onClick={handleClose}>İptal</Button>
-                                <Button type="submit" variant="contained">{editingInvoice ? 'Güncelle' : 'Oluştur'}</Button>
+                            <DialogActions sx={{ p: 3, pt: 0 }}>
+                                <Button onClick={handleClose} variant="outlined" sx={{ borderRadius: 2 }}>
+                                    İptal
+                                </Button>
+                                <Button type="submit" variant="contained" sx={{ borderRadius: 2, px: 3 }}>
+                                    {editingInvoice ? 'Güncelle' : 'Oluştur'}
+                                </Button>
                             </DialogActions>
                         </Form>
                     )}
