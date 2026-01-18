@@ -164,15 +164,11 @@ const Products = () => {
     }, [isMobile]);
 
     const initialValues = editingProduct || {
-        product_code: '',
         product_name: '',
         raw_material_type: '',
         description: '',
         origin: '',
         packaging: '',
-        unit_price: '',
-        currency: 'USD',
-        default_vat_rate: 20
     };
 
     return (
@@ -288,7 +284,6 @@ const Products = () => {
                         <Form>
                             <DialogContent>
                                 <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 2 }}>
-                                    <Field as={TextField} name="product_code" label="Ürün Kodu" fullWidth error={touched.product_code && !!errors.product_code} helperText={touched.product_code && errors.product_code} />
                                     <Field as={TextField} name="product_name" label="Ürün Adı" fullWidth error={touched.product_name && !!errors.product_name} helperText={touched.product_name && errors.product_name} />
                                     <Field as={TextField} name="raw_material_type" label="Hammadde Tipi" fullWidth select>
                                         {['PP', 'PE', 'PVC', 'PET', 'PS', 'ABS', 'LDPE', 'HDPE', 'LLDPE', 'GPPS', 'HIPS'].map(type => (
@@ -297,12 +292,6 @@ const Products = () => {
                                     </Field>
                                     <Field as={TextField} name="origin" label="Menşei" fullWidth />
                                     <Field as={TextField} name="packaging" label="Paketleme" fullWidth />
-                                    <Field as={TextField} name="unit_price" label="Birim Fiyat" type="number" fullWidth />
-                                    <Field as={TextField} name="currency" label="Para Birimi" select fullWidth>
-                                        <MenuItem value="USD">USD</MenuItem>
-                                        <MenuItem value="EUR">EUR</MenuItem>
-                                    </Field>
-                                    <Field as={TextField} name="default_vat_rate" label="KDV Oranı (%)" type="number" fullWidth />
                                 </Box>
                                 <Field as={TextField} name="description" label="Açıklama (Hammadde Detayları)" fullWidth multiline rows={3} sx={{ mt: 2 }} />
                             </DialogContent>

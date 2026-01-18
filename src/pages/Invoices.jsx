@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
     Box, Button, Typography, TextField, Dialog, DialogTitle, DialogContent,
-    DialogActions, Autocomplete, IconButton, Grid, Chip, Card, InputAdornment, useMediaQuery, useTheme
+    DialogActions, Autocomplete, IconButton, Grid, Chip, Card, InputAdornment,
+    useMediaQuery, useTheme, FormControlLabel, Checkbox, Alert
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { Delete, Download, Receipt, Edit, Add, Search, Cancel } from '@mui/icons-material';
@@ -21,6 +22,9 @@ const Invoices = () => {
     const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
     const [cancellingInvoiceId, setCancellingInvoiceId] = useState(null);
     const [cancellationReason, setCancellationReason] = useState('');
+    const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+    const [invoicingId, setInvoicingId] = useState(null);
+    const [exchangeRate, setExchangeRate] = useState('');
 
     const fetchInvoices = React.useCallback(async () => {
         try {
@@ -149,10 +153,29 @@ const Invoices = () => {
         }
     };
 
-    const handleMarkAsInvoiced = async (id) => {
+    const handleOpenInvoiceDialog = (id) => {
+        setInvoicingId(id);
+        setExchangeRate('');
+        setInvoiceDialogOpen(true);
+    };
+
+    const handleCloseInvoiceDialog = () => {
+        setInvoiceDialogOpen(false);
+        setInvoicingId(null);
+        setExchangeRate('');
+    };
+
+    const handleConfirmInvoice = async () => {
+        if (!invoicingId || !exchangeRate) {
+            alert('Lütfen döviz kurunu girin');
+            return;
+        }
         try {
-            await api.put(`/invoices/${id}/mark-invoiced`);
+            await api.put(`/invoices/${invoicingId}/mark-invoiced`, {
+                exchange_rate_usd: parseFloat(exchangeRate)
+            });
             fetchInvoices();
+            handleCloseInvoiceDialog();
         } catch (error) {
             console.error('Faturalaştırma hatası:', error);
             alert(error.response?.data?.message || 'Bir hata oluştu');
@@ -253,7 +276,7 @@ const Invoices = () => {
                         </IconButton>
                         {params.row.status !== 'Cancelled' && !params.row.is_invoiced && (
                             <IconButton
-                                onClick={() => handleMarkAsInvoiced(params.row.id)}
+                                onClick={() => handleOpenInvoiceDialog(params.row.id)}
                                 size="small"
                                 sx={{ color: 'primary.main', '&:hover': { bgcolor: 'rgba(248, 194, 36, 0.1)' } }}
                             >
@@ -285,16 +308,18 @@ const Invoices = () => {
             return {
                 customer_id: editingInvoice.customer_id,
                 date: editingInvoice.date,
-                exchange_rate_usd: editingInvoice.exchange_rate_usd || 30.0,
                 notes: editingInvoice.notes || '',
+                is_bonded_warehouse: editingInvoice.is_bonded_warehouse || false,
+                is_vat_included: editingInvoice.is_vat_included || false,
                 items: editingInvoice.items || [{ product_id: '', quantity: 1, unit: 'KG', unit_price: 0, delivery_location: '' }],
             };
         }
         return {
             customer_id: '',
             date: new Date().toISOString().split('T')[0],
-            exchange_rate_usd: 30.0,
             notes: '',
+            is_bonded_warehouse: false,
+            is_vat_included: false,
             items: [{ product_id: '', quantity: 1, unit: 'KG', unit_price: 0, delivery_location: '' }],
         };
     };
@@ -410,7 +435,7 @@ const Invoices = () => {
                     onSubmit={handleCreate}
                     enableReinitialize
                 >
-                    {({ values, setFieldValue }) => (
+                    {({ values, setFieldValue, touched, errors, setTouched }) => (
                         <Form>
                             <DialogContent>
                                 <Grid container spacing={2}>
@@ -420,14 +445,57 @@ const Invoices = () => {
                                             getOptionLabel={(option) => option.name || ''}
                                             value={getSelectedCustomer(values.customer_id)}
                                             onChange={(e, value) => setFieldValue('customer_id', value?.id || '')}
-                                            renderInput={(params) => <TextField {...params} label="Müşteri" required />}
+                                            renderInput={(params) => (
+                                                <TextField
+                                                    {...params}
+                                                    label="Müşteri"
+                                                    required
+                                                    error={!values.customer_id && touched.customer_id}
+                                                    helperText={!values.customer_id && touched.customer_id ? 'Müşteri seçimi zorunludur' : ''}
+                                                />
+                                            )}
                                         />
                                     </Grid>
-                                    <Grid item xs={6} sm={3}>
+                                    <Grid item xs={12} sm={6}>
                                         <Field as={TextField} name="date" label="Tarih" type="date" fullWidth InputLabelProps={{ shrink: true }} />
                                     </Grid>
-                                    <Grid item xs={6} sm={3}>
-                                        <Field as={TextField} name="exchange_rate_usd" label="USD Kuru" type="number" fullWidth />
+                                    <Grid item xs={12} sm={6}>
+                                        <FormControlLabel
+                                            control={
+                                                <Checkbox
+                                                    checked={values.is_bonded_warehouse}
+                                                    onChange={(e) => setFieldValue('is_bonded_warehouse', e.target.checked)}
+                                                    color="primary"
+                                                />
+                                            }
+                                            label={
+                                                <Box>
+                                                    <Typography variant="body2" fontWeight={500}>Antrepolu Devir</Typography>
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        Seçilirse KDV %0 olarak hesaplanır
+                                                    </Typography>
+                                                </Box>
+                                            }
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        <FormControlLabel
+                                            control={
+                                                <Checkbox
+                                                    checked={values.is_vat_included}
+                                                    onChange={(e) => setFieldValue('is_vat_included', e.target.checked)}
+                                                    color="primary"
+                                                />
+                                            }
+                                            label={
+                                                <Box>
+                                                    <Typography variant="body2" fontWeight={500}>KDV Dahil</Typography>
+                                                    <Typography variant="caption" color="text.secondary">
+                                                        Seçilirse PDF'te fiyatlar %20 KDV dahil yazılır
+                                                    </Typography>
+                                                </Box>
+                                            }
+                                        />
                                     </Grid>
                                 </Grid>
 
@@ -567,6 +635,71 @@ const Invoices = () => {
                         sx={{ borderRadius: 2, px: 3 }}
                     >
                         İptal Et
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Invoice Dialog - Ask for Exchange Rate */}
+            <Dialog
+                open={invoiceDialogOpen}
+                onClose={handleCloseInvoiceDialog}
+                maxWidth="sm"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: 3 } }}
+            >
+                <DialogTitle sx={{ pb: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box
+                            sx={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 2,
+                                bgcolor: 'rgba(248, 194, 36, 0.15)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                        >
+                            <Receipt sx={{ color: 'primary.main' }} />
+                        </Box>
+                        <Box>
+                            <Typography variant="h6" fontWeight={600}>
+                                Siparişi Faturalaştır
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                                Döviz kurunu girin
+                            </Typography>
+                        </Box>
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    <Alert severity="info" sx={{ mb: 2 }}>
+                        Lütfen faturalaştırma tarihindeki güncel USD kurunu girin. Bu değer raporlama için kullanılacaktır.
+                    </Alert>
+                    <TextField
+                        fullWidth
+                        label="USD/TRY Kuru"
+                        type="number"
+                        value={exchangeRate}
+                        onChange={(e) => setExchangeRate(e.target.value)}
+                        placeholder="Örn: 34.50"
+                        InputProps={{
+                            startAdornment: <InputAdornment position="start">$1 =</InputAdornment>,
+                            endAdornment: <InputAdornment position="end">TL</InputAdornment>,
+                        }}
+                    />
+                </DialogContent>
+                <DialogActions sx={{ p: 3, pt: 0 }}>
+                    <Button onClick={handleCloseInvoiceDialog} variant="outlined" sx={{ borderRadius: 2 }}>
+                        Vazgeç
+                    </Button>
+                    <Button
+                        onClick={handleConfirmInvoice}
+                        variant="contained"
+                        sx={{ borderRadius: 2, px: 3 }}
+                        disabled={!exchangeRate}
+                    >
+                        Faturalaştır
                     </Button>
                 </DialogActions>
             </Dialog>
