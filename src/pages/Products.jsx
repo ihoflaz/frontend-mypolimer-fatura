@@ -79,12 +79,23 @@ const Products = () => {
     const columns = useMemo(() => {
         const allColumns = [
             {
-                field: 'product_code',
-                headerName: 'Kod',
-                width: isMobile ? 80 : 120,
+                field: 'product_name',
+                headerName: 'Ürün Adı',
+                flex: 1,
+                minWidth: isMobile ? 150 : 200,
+                renderCell: (params) => (
+                    <Typography variant="body2" fontWeight={500} sx={{ fontSize: isMobile ? '0.8rem' : '0.875rem' }}>
+                        {params.value}
+                    </Typography>
+                ),
+            },
+            {
+                field: 'raw_material_type',
+                headerName: 'Tip',
+                width: 80,
                 renderCell: (params) => (
                     <Chip
-                        label={params.value}
+                        label={params.value || '-'}
                         size="small"
                         sx={{
                             bgcolor: 'rgba(248, 194, 36, 0.15)',
@@ -96,41 +107,23 @@ const Products = () => {
                 ),
             },
             {
-                field: 'product_name',
-                headerName: 'Ürün Adı',
-                flex: 1,
-                minWidth: isMobile ? 120 : 180,
-                renderCell: (params) => (
-                    <Typography variant="body2" fontWeight={500} sx={{ fontSize: isMobile ? '0.8rem' : '0.875rem' }}>
-                        {params.value}
-                    </Typography>
-                ),
-            },
-            {
-                field: 'raw_material_type',
-                headerName: 'Tip',
-                width: 80,
+                field: 'origin',
+                headerName: 'Menşei',
+                width: 100,
                 hideOnMobile: true,
-                renderCell: (params) => (
-                    <Chip
-                        label={params.value}
-                        size="small"
-                        variant="outlined"
-                        sx={{ borderColor: 'secondary.main', color: 'secondary.main' }}
-                    />
-                ),
             },
-            { field: 'description', headerName: 'Açıklama', flex: 1, minWidth: 150, hideOnMobile: true },
-            { field: 'origin', headerName: 'Menşei', width: 100, hideOnMobile: true },
             {
-                field: 'unit_price',
-                headerName: 'Fiyat',
-                width: isMobile ? 90 : 120,
-                renderCell: (params) => (
-                    <Typography variant="body2" fontWeight={600} color="primary.dark" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
-                        {params.row.currency} {parseFloat(params.value || 0).toFixed(2)}
-                    </Typography>
-                ),
+                field: 'packaging',
+                headerName: 'Paketleme',
+                width: 120,
+                hideOnMobile: true,
+            },
+            {
+                field: 'description',
+                headerName: 'Açıklama',
+                flex: 1,
+                minWidth: 150,
+                hideOnMobile: true,
             },
             {
                 field: 'actions',

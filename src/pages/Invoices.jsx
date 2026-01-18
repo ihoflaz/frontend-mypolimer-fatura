@@ -232,12 +232,24 @@ const Invoices = () => {
             {
                 field: 'total_amount_currency',
                 headerName: 'Toplam',
-                width: isMobile ? 80 : 130,
-                renderCell: (params) => (
-                    <Typography variant="body2" fontWeight={600} color="primary.dark" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
-                        ${parseFloat(params.value || 0).toFixed(0)}
-                    </Typography>
-                ),
+                width: isMobile ? 100 : 150,
+                renderCell: (params) => {
+                    const total = parseFloat(params.value || 0);
+                    const displayTotal = params.row.is_vat_included ? total * 1.20 : total;
+                    return (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                            <Typography variant="body2" fontWeight={600} color="primary.dark" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
+                                ${displayTotal.toFixed(0)}
+                            </Typography>
+                            {params.row.is_vat_included && (
+                                <Chip label="+KDV" size="small" sx={{ fontSize: '0.6rem', height: 16, bgcolor: 'rgba(16, 185, 129, 0.15)', color: '#059669' }} />
+                            )}
+                            {params.row.is_bonded_warehouse && (
+                                <Chip label="ANT" size="small" sx={{ fontSize: '0.6rem', height: 16, bgcolor: 'rgba(79, 129, 189, 0.15)', color: '#4f81bd' }} />
+                            )}
+                        </Box>
+                    );
+                },
             },
             {
                 field: 'status',
