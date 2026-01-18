@@ -1,0 +1,13 @@
+import * as Yup from 'yup';
+
+export const CustomerSchema = Yup.object().shape({
+    name: Yup.string().required('Required'),
+    tax_id: Yup.string(),
+    // Add other validations
+});
+
+export const ProductSchema = Yup.object().shape({
+    product_code: Yup.string().required('Required'),
+    product_name: Yup.string().required('Required'),
+    unit_price: Yup.number().required('Required'),
+});
