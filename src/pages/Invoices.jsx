@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
     Box, Button, Typography, TextField, Dialog, DialogTitle, DialogContent,
     DialogActions, Autocomplete, IconButton, Grid, Chip, Card, InputAdornment,
-    useMediaQuery, useTheme, FormControlLabel, Checkbox, Alert
+    useMediaQuery, useTheme, FormControlLabel, Checkbox, Alert, Tooltip
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
 import { Delete, Download, Receipt, Edit, Add, Search, Cancel } from '@mui/icons-material';
@@ -246,7 +246,12 @@ const Invoices = () => {
                 hideOnMobile: true,
                 renderCell: (params) => {
                     if (params.row.status === 'Cancelled') {
-                        return <Chip label="İptal" size="small" sx={{ bgcolor: 'rgba(239, 68, 68, 0.15)', color: '#dc2626' }} />;
+                        const reason = params.row.cancellation_reason || 'İptal nedeni belirtilmemiş';
+                        return (
+                            <Tooltip title={`İptal Nedeni: ${reason}`} arrow>
+                                <Chip label="İptal" size="small" sx={{ bgcolor: 'rgba(239, 68, 68, 0.15)', color: '#dc2626', cursor: 'pointer' }} />
+                            </Tooltip>
+                        );
                     }
                     return params.row.is_invoiced
                         ? <Chip label="Faturalı" size="small" sx={{ bgcolor: 'rgba(16, 185, 129, 0.15)', color: '#059669' }} />
