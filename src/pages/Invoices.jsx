@@ -236,10 +236,11 @@ const Invoices = () => {
                 renderCell: (params) => {
                     const total = parseFloat(params.value || 0);
                     const displayTotal = params.row.is_vat_included ? total * 1.20 : total;
+                    const currencySymbol = params.row.currency === 'EUR' ? '€' : params.row.currency === 'TRY' ? '₺' : '$';
                     return (
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                             <Typography variant="body2" fontWeight={600} color="primary.dark" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>
-                                ${displayTotal.toFixed(0)}
+                                {currencySymbol}{displayTotal.toFixed(0)}
                             </Typography>
                             {params.row.is_vat_included && (
                                 <Chip label="+KDV" size="small" sx={{ fontSize: '0.6rem', height: 16, bgcolor: 'rgba(16, 185, 129, 0.15)', color: '#059669' }} />
@@ -328,6 +329,7 @@ const Invoices = () => {
                 notes: editingInvoice.notes || '',
                 is_bonded_warehouse: editingInvoice.is_bonded_warehouse || false,
                 is_vat_included: editingInvoice.is_vat_included || false,
+                currency: editingInvoice.currency || 'USD',
                 items: editingInvoice.items || [{ product_id: '', quantity: 1, unit: 'KG', unit_price: 0, delivery_location: '' }],
             };
         }
@@ -337,6 +339,7 @@ const Invoices = () => {
             notes: '',
             is_bonded_warehouse: false,
             is_vat_included: false,
+            currency: 'USD',
             items: [{ product_id: '', quantity: 1, unit: 'KG', unit_price: 0, delivery_location: '' }],
         };
     };
@@ -513,6 +516,19 @@ const Invoices = () => {
                                                 </Box>
                                             }
                                         />
+                                    </Grid>
+                                    <Grid item xs={12} sm={6}>
+                                        <TextField
+                                            select
+                                            fullWidth
+                                            label="Para Birimi"
+                                            value={values.currency}
+                                            onChange={(e) => setFieldValue('currency', e.target.value)}
+                                        >
+                                            <MenuItem value="USD">USD ($)</MenuItem>
+                                            <MenuItem value="EUR">EUR (€)</MenuItem>
+                                            <MenuItem value="TRY">TRY (₺)</MenuItem>
+                                        </TextField>
                                     </Grid>
                                 </Grid>
 
