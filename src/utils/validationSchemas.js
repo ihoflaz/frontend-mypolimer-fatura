@@ -7,7 +7,5 @@ export const CustomerSchema = Yup.object().shape({
 });
 
 export const ProductSchema = Yup.object().shape({
-    product_code: Yup.string().required('Required'),
-    product_name: Yup.string().required('Required'),
-    unit_price: Yup.number().required('Required'),
+    product_name: Yup.string().required('Ürün adı gereklidir'),
 });
