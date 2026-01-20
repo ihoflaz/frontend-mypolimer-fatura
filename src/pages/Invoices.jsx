@@ -59,9 +59,11 @@ const Invoices = () => {
         try {
             let totalCurrency = 0;
             const items = values.items.map(item => {
-                const lineTotal = item.quantity * item.unit_price;
+                const quantity = parseFloat(item.quantity) || 0;
+                const unitPrice = parseFloat(item.unit_price) || 0;
+                const lineTotal = quantity * unitPrice;
                 totalCurrency += lineTotal;
-                return { ...item, line_total: lineTotal };
+                return { ...item, quantity, unit_price: unitPrice, line_total: lineTotal };
             });
 
             const payload = {
@@ -563,9 +565,37 @@ const Invoices = () => {
                                                         renderInput={(params) => <TextField {...params} label="Ürün" size="small" />}
                                                         sx={{ width: { xs: '100%', sm: 220 } }}
                                                     />
-                                                    <Field as={TextField} name={`items.${index}.quantity`} label="Miktar" type="number" inputProps={{ step: "0.001" }} sx={{ width: 90 }} size="small" />
+                                                    <TextField
+                                                        name={`items.${index}.quantity`}
+                                                        label="Miktar"
+                                                        type="text"
+                                                        inputProps={{ inputMode: 'decimal' }}
+                                                        value={item.quantity}
+                                                        onChange={(e) => {
+                                                            const value = e.target.value.replace(',', '.');
+                                                            if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                                                                setFieldValue(`items.${index}.quantity`, value);
+                                                            }
+                                                        }}
+                                                        sx={{ width: 90 }}
+                                                        size="small"
+                                                    />
                                                     <Field as={TextField} name={`items.${index}.unit`} label="Birim" sx={{ width: 70 }} size="small" />
-                                                    <Field as={TextField} name={`items.${index}.unit_price`} label="Fiyat ($)" type="number" inputProps={{ step: "0.001" }} sx={{ width: 100 }} size="small" />
+                                                    <TextField
+                                                        name={`items.${index}.unit_price`}
+                                                        label="Fiyat ($)"
+                                                        type="text"
+                                                        inputProps={{ inputMode: 'decimal' }}
+                                                        value={item.unit_price}
+                                                        onChange={(e) => {
+                                                            const value = e.target.value.replace(',', '.');
+                                                            if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                                                                setFieldValue(`items.${index}.unit_price`, value);
+                                                            }
+                                                        }}
+                                                        sx={{ width: 100 }}
+                                                        size="small"
+                                                    />
                                                     <Field as={TextField} name={`items.${index}.delivery_location`} label="Teslim Yeri" sx={{ width: { xs: '100%', sm: 130 } }} size="small" />
                                                     <IconButton onClick={() => remove(index)} color="error" size="small">
                                                         <Delete />
@@ -712,11 +742,16 @@ const Invoices = () => {
                     <TextField
                         fullWidth
                         label="USD/TRY Kuru"
-                        type="number"
+                        type="text"
                         value={exchangeRate}
-                        onChange={(e) => setExchangeRate(e.target.value)}
+                        onChange={(e) => {
+                            const value = e.target.value.replace(',', '.');
+                            if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                                setExchangeRate(value);
+                            }
+                        }}
                         placeholder="Örn: 34.50"
-                        inputProps={{ step: "0.001" }}
+                        inputProps={{ inputMode: 'decimal' }}
                         InputProps={{
                             startAdornment: <InputAdornment position="start">$1 =</InputAdornment>,
                             endAdornment: <InputAdornment position="end">TL</InputAdornment>,
