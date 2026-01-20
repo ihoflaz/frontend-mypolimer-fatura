@@ -563,9 +563,9 @@ const Invoices = () => {
                                                         renderInput={(params) => <TextField {...params} label="Ürün" size="small" />}
                                                         sx={{ width: { xs: '100%', sm: 220 } }}
                                                     />
-                                                    <Field as={TextField} name={`items.${index}.quantity`} label="Miktar" type="number" sx={{ width: 90 }} size="small" />
+                                                    <Field as={TextField} name={`items.${index}.quantity`} label="Miktar" type="number" inputProps={{ step: "0.001" }} sx={{ width: 90 }} size="small" />
                                                     <Field as={TextField} name={`items.${index}.unit`} label="Birim" sx={{ width: 70 }} size="small" />
-                                                    <Field as={TextField} name={`items.${index}.unit_price`} label="Fiyat ($)" type="number" sx={{ width: 100 }} size="small" />
+                                                    <Field as={TextField} name={`items.${index}.unit_price`} label="Fiyat ($)" type="number" inputProps={{ step: "0.001" }} sx={{ width: 100 }} size="small" />
                                                     <Field as={TextField} name={`items.${index}.delivery_location`} label="Teslim Yeri" sx={{ width: { xs: '100%', sm: 130 } }} size="small" />
                                                     <IconButton onClick={() => remove(index)} color="error" size="small">
                                                         <Delete />
@@ -716,6 +716,7 @@ const Invoices = () => {
                         value={exchangeRate}
                         onChange={(e) => setExchangeRate(e.target.value)}
                         placeholder="Örn: 34.50"
+                        inputProps={{ step: "0.001" }}
                         InputProps={{
                             startAdornment: <InputAdornment position="start">$1 =</InputAdornment>,
                             endAdornment: <InputAdornment position="end">TL</InputAdornment>,
