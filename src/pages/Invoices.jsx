@@ -5,7 +5,7 @@ import {
     useMediaQuery, useTheme, FormControlLabel, Checkbox, Alert, Tooltip, MenuItem
 } from '@mui/material';
 import { DataGrid } from '@mui/x-data-grid';
-import { Delete, Download, Receipt, Edit, Add, Search, Cancel } from '@mui/icons-material';
+import { Delete, Download, Receipt, Edit, Add, Search, Cancel, Email } from '@mui/icons-material';
 import api from '../services/api';
 import { Formik, Form, Field, FieldArray } from 'formik';
 
@@ -25,6 +25,13 @@ const Invoices = () => {
     const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
     const [invoicingId, setInvoicingId] = useState(null);
     const [exchangeRate, setExchangeRate] = useState('');
+    // Mail gönderme
+    const [mailDialogOpen, setMailDialogOpen] = useState(false);
+    const [mailInvoice, setMailInvoice] = useState(null);
+    const [senders, setSenders] = useState([]);
+    const [mailForm, setMailForm] = useState({ from: '', to: '', cc: '', subject: '', message: '' });
+    const [sendingMail, setSendingMail] = useState(false);
+    const [mailFeedback, setMailFeedback] = useState(null);
 
     const fetchInvoices = React.useCallback(async () => {
         try {
@@ -50,10 +57,69 @@ const Invoices = () => {
         }
     }, []);
 
+    const fetchSenders = React.useCallback(async () => {
+        try {
+            const { data } = await api.get('/mail/senders');
+            setSenders(data.senders || []);
+            setMailForm((f) => ({ ...f, from: data.default || '' }));
+        } catch (error) {
+            console.error('Gönderen adresler yüklenirken hata:', error);
+        }
+    }, []);
+
     useEffect(() => {
         fetchInvoices();
         fetchData();
-    }, [fetchInvoices, fetchData]);
+        fetchSenders();
+    }, [fetchInvoices, fetchData, fetchSenders]);
+
+    const defaultSender = () => {
+        // fetchSenders mailForm.from'u default'a set eder; state güncel değilse ilk sırayı kullan
+        return mailForm.from || senders[0] || '';
+    };
+
+    const handleOpenMailDialog = (row) => {
+        setMailInvoice(row);
+        setMailFeedback(null);
+        setMailForm((f) => ({
+            from: f.from || defaultSender(),
+            to: row.Customer?.email || '',
+            cc: '',
+            subject: `Proforma Fatura ${row.invoice_no}`,
+            message: '',
+        }));
+        setMailDialogOpen(true);
+    };
+
+    const handleCloseMailDialog = () => {
+        setMailDialogOpen(false);
+        setMailInvoice(null);
+        setMailFeedback(null);
+    };
+
+    const handleSendMail = async () => {
+        if (!mailForm.from || !mailForm.to) {
+            setMailFeedback({ type: 'error', text: 'Gönderen ve alıcı adresi zorunludur.' });
+            return;
+        }
+        setSendingMail(true);
+        setMailFeedback(null);
+        try {
+            await api.post(`/mail/invoices/${mailInvoice.id}/send`, {
+                from: mailForm.from,
+                to: mailForm.to,
+                cc: mailForm.cc || undefined,
+                subject: mailForm.subject || undefined,
+                message: mailForm.message || undefined,
+            });
+            setMailFeedback({ type: 'success', text: `E-posta gönderildi: ${mailForm.to}` });
+            setTimeout(handleCloseMailDialog, 1500);
+        } catch (error) {
+            setMailFeedback({ type: 'error', text: error.response?.data?.error || error.response?.data?.message || 'E-posta gönderilemedi.' });
+        } finally {
+            setSendingMail(false);
+        }
+    };
 
     const handleCreate = async (values, { resetForm }) => {
         try {
@@ -291,6 +357,14 @@ const Invoices = () => {
                             sx={{ color: 'success.main', '&:hover': { bgcolor: 'rgba(16, 185, 129, 0.1)' } }}
                         >
                             <Download fontSize="small" />
+                        </IconButton>
+                        <IconButton
+                            onClick={() => handleOpenMailDialog(params.row)}
+                            size="small"
+                            title="Müşteriye Mail Gönder"
+                            sx={{ color: 'secondary.main', '&:hover': { bgcolor: 'rgba(79, 129, 189, 0.1)' } }}
+                        >
+                            <Email fontSize="small" />
                         </IconButton>
                         {params.row.status !== 'Cancelled' && !params.row.is_invoiced && (
                             <IconButton
@@ -733,6 +807,63 @@ const Invoices = () => {
                         disabled={!exchangeRate}
                     >
                         Faturalaştır
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Mail Gönderme Dialog */}
+            <Dialog open={mailDialogOpen} onClose={handleCloseMailDialog} maxWidth="sm" fullWidth>
+                <DialogTitle>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <Box sx={{ width: 44, height: 44, borderRadius: 2, bgcolor: 'rgba(79, 129, 189, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <Email sx={{ color: 'secondary.main' }} />
+                        </Box>
+                        <Box>
+                            <Typography variant="h6" fontWeight={600}>Müşteriye Mail Gönder</Typography>
+                            <Typography variant="caption" color="text.secondary">
+                                {mailInvoice ? `Proforma ${mailInvoice.invoice_no} — PDF ekli gönderilecek` : ''}
+                            </Typography>
+                        </Box>
+                    </Box>
+                </DialogTitle>
+                <DialogContent>
+                    {mailFeedback && (
+                        <Alert severity={mailFeedback.type} sx={{ mb: 2 }}>{mailFeedback.text}</Alert>
+                    )}
+                    <TextField
+                        select fullWidth label="Gönderen adres" value={mailForm.from}
+                        onChange={(e) => setMailForm({ ...mailForm, from: e.target.value })}
+                        sx={{ mb: 2, mt: 1 }}
+                    >
+                        {senders.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
+                    </TextField>
+                    <TextField
+                        fullWidth label="Alıcı (müşteri e-postası)" type="email" value={mailForm.to}
+                        onChange={(e) => setMailForm({ ...mailForm, to: e.target.value })}
+                        sx={{ mb: 2 }}
+                    />
+                    <TextField
+                        fullWidth label="CC (opsiyonel)" value={mailForm.cc}
+                        onChange={(e) => setMailForm({ ...mailForm, cc: e.target.value })}
+                        sx={{ mb: 2 }}
+                    />
+                    <TextField
+                        fullWidth label="Konu" value={mailForm.subject}
+                        onChange={(e) => setMailForm({ ...mailForm, subject: e.target.value })}
+                        sx={{ mb: 2 }}
+                    />
+                    <TextField
+                        fullWidth multiline minRows={3} label="Mesaj (boş bırakılırsa varsayılan metin gönderilir)"
+                        value={mailForm.message}
+                        onChange={(e) => setMailForm({ ...mailForm, message: e.target.value })}
+                    />
+                </DialogContent>
+                <DialogActions sx={{ p: 3, pt: 0 }}>
+                    <Button onClick={handleCloseMailDialog} variant="outlined" sx={{ borderRadius: 2 }} disabled={sendingMail}>
+                        Vazgeç
+                    </Button>
+                    <Button onClick={handleSendMail} variant="contained" startIcon={<Email />} sx={{ borderRadius: 2, px: 3 }} disabled={sendingMail || !mailForm.from || !mailForm.to}>
+                        {sendingMail ? 'Gönderiliyor...' : 'Gönder'}
                     </Button>
                 </DialogActions>
             </Dialog>
